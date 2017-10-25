@@ -31,6 +31,8 @@ def gradient_between(x, y, dy, ax=None, **kwargs):
     elif ndim == 2:
         if dy.shape[1] == 2:
             dy = dy.T
+        elif dy.shape[0] != 2:
+            raise ValueError("Wrong shaped uncertainties.")
         if kwargs.get('percentiles', False):
             dy = np.squeeze([y - dy[0], dy[1] - y])
     else:
@@ -138,7 +140,7 @@ def running_mean(x, y, ncells=2):
     yy = (yy[ncells:] - yy[:-ncells]) / ncells
     xx = np.cumsum(np.insert(np.insert(x, 0, x[0]), -1, x[-1]))
     xx = (xx[ncells:] - xx[:-ncells]) / ncells
-    return interp1d(xx, yy, bounds_error=False, fill_value=np.nan)(x)
+    return interp1d(xx, yy, bounds_error=False, fill_value='extrapolate')(x)
 
 
 def plotbeam(bmaj, bmin=None, bpa=0.0, ax=None, **kwargs):
@@ -158,3 +160,13 @@ def plotbeam(bmaj, bmin=None, bpa=0.0, ax=None, **kwargs):
                          lw=kwargs.get('linewidth', kwargs.get('lw', 1)),
                          color=kwargs.get('color', kwargs.get('c', 'k'))))
     return
+
+
+def percentiles_to_errors(pcnts):
+    """Covert [16, 50, 84]th percentiles to [y, -dy, +dy]."""
+    pcnts = np.squeeze(pcnts)
+    if pcnts.shape[1] != 3 and pcnts.shape[0] == 3:
+        pcnts = pcnts.T
+    if pcnts.shape[1] != 3:
+        raise TypeError("Must provide a Nx3 or 3xN array.")
+    return np.array([[p[1], p[1]-p[0], p[2]-p[1]] for p in pcnts]).T
