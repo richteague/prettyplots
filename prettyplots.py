@@ -71,9 +71,16 @@ def gradient_between(x, y, dy, ax=None, **kwargs):
     es = np.array([kwargs.get('edgestyle', ':')]).flatten()
 
     # Incrementally calculate the alpha for a given layer and plot it.
+    # Note that this doesn't work for logarithmic data thus far.
 
     alphacum = 0.0
-    fy = np.linspace(0., ns, fn)
+
+    # TODO: Check whether this deals with logarithmic vales.
+    if kwargs.get('log', False):
+        fy = np.insert(np.logspace(-3, 0, fn) * ns, 0, 0)
+    else:
+        fy = np.linspace(0., ns, fn)
+
     for n in fy[::-1]:
         alpha = np.mean(gaussian(n, ns / 3., am)) - alphacum
         ax.fill_between(x, y-n*dy[0], y+n*dy[1], facecolor=fc, lw=0,
@@ -164,9 +171,11 @@ def plotbeam(bmaj, bmin=None, bpa=0.0, ax=None, **kwargs):
 
 def percentiles_to_errors(pcnts):
     """Covert [16, 50, 84]th percentiles to [y, -dy, +dy]."""
-    pcnts = np.squeeze(pcnts)
-    if pcnts.shape[1] != 3 and pcnts.shape[0] == 3:
-        pcnts = pcnts.T
-    if pcnts.shape[1] != 3:
-        raise TypeError("Must provide a Nx3 or 3xN array.")
-    return np.array([[p[1], p[1]-p[0], p[2]-p[1]] for p in pcnts]).T
+    pcnts = np.squeeze([pcnts])
+    if pcnts.ndim > 1:
+        if pcnts.shape[1] != 3 and pcnts.shape[0] == 3:
+            pcnts = pcnts.T
+        if pcnts.shape[1] != 3:
+            raise TypeError("Must provide a Nx3 or 3xN array.")
+        return np.array([[p[1], p[1]-p[0], p[2]-p[1]] for p in pcnts]).T
+    return np.squeeze([pcnts[1], pcnts[1]-pcnts[0], pcnts[2]-pcnts[1]])
