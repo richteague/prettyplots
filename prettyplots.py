@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
-from scipy.interpolate import interp1d
 
 
 def gaussian(x, dx, A=1.0, x0=0.0, offset=0.0):
@@ -141,13 +140,11 @@ def texify(s, underscore='\ '):
     return ns
 
 
-def running_mean(x, y, ncells=2):
+def running_mean(y, ncells=2):
     """Returns the running mean over 'ncells' number of cells."""
-    yy = np.cumsum(np.insert(np.insert(y, 0, y[0]), -1, y[-1]))
-    yy = (yy[ncells:] - yy[:-ncells]) / ncells
-    xx = np.cumsum(np.insert(np.insert(x, 0, x[0]), -1, x[-1]))
-    xx = (xx[ncells:] - xx[:-ncells]) / ncells
-    return interp1d(xx, yy, bounds_error=False, fill_value='extrapolate')(x)
+    window = np.ones(ncells) / ncells
+    return np.average([np.convolve(y[::-1], window, mode='same')[::-1],
+                       np.convolve(y, window, mode='same')], axis=0)
 
 
 def plotbeam(bmaj, bmin=None, bpa=0.0, ax=None, **kwargs):
@@ -162,7 +159,7 @@ def plotbeam(bmaj, bmin=None, bpa=0.0, ax=None, **kwargs):
         bmaj = temp
     offset = kwargs.get('offset', 0.125)
     ax.add_patch(Ellipse(ax.transLimits.inverted().transform((offset, offset)),
-                         width=bmin, height=bmaj, angle=bpa,
+                         width=bmin, height=bmaj, angle=-bpa,
                          fill=False, hatch=kwargs.get('hatch', '////////'),
                          lw=kwargs.get('linewidth', kwargs.get('lw', 1)),
                          color=kwargs.get('color', kwargs.get('c', 'k'))))
