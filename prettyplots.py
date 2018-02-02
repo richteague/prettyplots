@@ -140,11 +140,69 @@ def texify(s, underscore='\ '):
     return ns
 
 
-def running_mean(y, ncells=2):
+def running_mean_convolve(y, ncells=2):
     """Returns the running mean over 'ncells' number of cells."""
     window = np.ones(ncells) / ncells
     return np.average([np.convolve(y[::-1], window, mode='same')[::-1],
                        np.convolve(y, window, mode='same')], axis=0)
+
+
+def running_mean(y, window=5, x=None):
+    """Calculate the running mean using a simple window."""
+
+    # Define the window size.
+    window = int(window)
+    if window >= len(y):
+        raise ValueError("Window too big.")
+
+    # Sort the data if x values provided.
+    if x is not None:
+        x, y = sort_arrays(x, y)
+
+    # Include dummy values.
+    pad_low = y[0] * np.ones(window)
+    pad_high = y[-1] * np.ones(window)
+    y_pad = np.concatenate([pad_low, y, pad_high])
+
+    # Define the window indices.
+    a = int(np.ceil(window / 2))
+    b = window - a
+
+    # Loop through and calculate.
+    mu = [np.nanmean(y_pad[i-a:i+b]) for i in range(window, len(y) + window)]
+    return np.squeeze(mu)
+
+
+def running_variance(y, window=5, x=None):
+    """Calculate the running variance using a simple window."""
+
+    # Define the window size.
+    window = int(window)
+    if window >= len(y):
+        raise ValueError("Window too big.")
+
+    # Sort the data if x values provided.
+    if x is not None:
+        x, y = sort_arrays(x, y)
+
+    # Include dummy values.
+    pad_low = y[0] * np.ones(window)
+    pad_high = y[-1] * np.ones(window)
+    y_pad = np.concatenate([pad_low, y, pad_high])
+
+    # Define the window indices.
+    a = int(np.ceil(window / 2))
+    b = window - a
+
+    # Loop through and calculate.
+    var = [np.nanvar(y_pad[i-a:i+b]) for i in range(window, len(y) + window)]
+    return np.squeeze(var)
+
+
+def sort_arrays(x, y):
+    """Sort the data for monotonically increasing x."""
+    idx = np.argsort(x)
+    return x[idx], y[idx]
 
 
 def plotbeam(bmaj, bmin=None, bpa=0.0, ax=None, **kwargs):

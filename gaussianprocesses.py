@@ -72,7 +72,7 @@ def SHO_model(x, y, dy, oversample=True, noise=True, return_var=False):
         print 'Solution:', soln.x
         yy = gp.predict(y, xx, return_cov=False, return_var=return_var)
         if return_var:
-            return xx, yy[0], yy[1]
+            return xx, yy[0], yy[1]**0.5
         return xx, yy
     else:
         print 'No Solution.'
