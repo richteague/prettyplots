@@ -42,11 +42,9 @@ def SHO_model(x, y, dy, oversample=True, noise=True, return_var=False):
     kernel = celerite.terms.SHOTerm(log_S0=lnS0, log_Q=lnQ, log_omega0=lnw0)
 
     if noise:
-        if np.nanmean(dy) == 0.0:
-            print np.log(np.nanmean(dy))
+        if np.nanmean(dy) != 0.0:
             noise = celerite.terms.JitterTerm(log_sigma=np.log(np.nanmean(dy)))
         else:
-            print np.log(np.nanstd(y))
             noise = celerite.terms.JitterTerm(log_sigma=np.log(np.nanstd(y)))
         kernel = kernel + noise
     gp = celerite.GP(kernel, mean=np.nanmean(y), fit_mean=False)
@@ -81,8 +79,8 @@ def SHO_model(x, y, dy, oversample=True, noise=True, return_var=False):
         return x, y
 
 
-def Matern32_model(x, y, dy, fit_mean=False, jitter=True, oversample=True,
-                   return_var=True):
+def Matern32_model(x, y, dy, fit_mean=True, jitter=True, oversample=True,
+                   return_var=True, verbose=False):
     """
     Return a model using a Matern 3/2 kernel.
 
@@ -96,6 +94,7 @@ def Matern32_model(x, y, dy, fit_mean=False, jitter=True, oversample=True,
     oversample: If true, sample the GP at a higher resolution. If true will use
                 a default of 5, otherwise a value can be specified.
     return_var: Return the variance of the fit.
+    verbose:    Print out the best-fit values.
 
     - Returns -
 
@@ -107,12 +106,12 @@ def Matern32_model(x, y, dy, fit_mean=False, jitter=True, oversample=True,
     # Make sure arrays are ordered.
     x, y, dy = check_ordered(x, y, dy)
 
-    # Define the Kernel. TODO: Include multiple M32 kernels.
+    # Define the Kernel.
     lnsigma, lnrho = np.log(np.nanstd(y)), np.log(np.nanmean(abs(np.diff(x))))
     kernel = celerite.terms.Matern32Term(log_sigma=lnsigma, log_rho=lnrho)
 
     if jitter:
-        if np.nanmean(dy) == 0.0:
+        if np.nanmean(dy) != 0.0:
             noise = celerite.terms.JitterTerm(log_sigma=np.log(np.nanmean(dy)))
         else:
             noise = celerite.terms.JitterTerm(log_sigma=np.log(np.nanstd(y)))
@@ -137,13 +136,15 @@ def Matern32_model(x, y, dy, fit_mean=False, jitter=True, oversample=True,
         xx = x
 
     if soln.success:
-        print 'Solution:', soln.x
+        if verbose:
+            print 'Solution:', soln.x
         yy = gp.predict(y, xx, return_cov=False, return_var=return_var)
         if return_var:
-            return xx, yy[0], yy[1]
+            return xx, yy[0], yy[1]**0.5
         return xx, yy
     else:
-        print 'No Solution.'
+        if verbose:
+            print 'No Solution.'
         if return_var:
             return x, y, np.zeros(x.size)
         return x, y

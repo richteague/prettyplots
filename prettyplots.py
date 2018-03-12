@@ -1,6 +1,18 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
+from scipy.interpolate import griddata
+
+
+def fill_NaN(data):
+    """Fill in the NaN values with nearest values."""
+    xgrid, ygrid = np.arange(data.shape[1]), np.arange(data.shape[0])
+    xpnts, ypnts = np.meshgrid(xgrid, ygrid)
+    xpnts, ypnts = xpnts.flatten(), ypnts.flatten()
+    dpnts = data.flatten()
+    mask = np.where(np.isfinite(dpnts))
+    return griddata((xpnts[mask], ypnts[mask]), dpnts[mask],
+                    (xgrid[None, :], ygrid[:, None]), method='nearest')
 
 
 def gaussian(x, dx, A=1.0, x0=0.0, offset=0.0):
@@ -171,6 +183,38 @@ def running_mean(y, window=5, x=None):
     # Loop through and calculate.
     mu = [np.nanmean(y_pad[i-a:i+b]) for i in range(window, len(y) + window)]
     return np.squeeze(mu)
+
+
+def running_percentiles(y, percentiles=[16., 50., 84.], window=5, x=None):
+    """Calculate the running percentile values within a window."""
+
+    # Define the window size.
+    window = int(window)
+    if window >= len(y):
+        raise ValueError("Window too big.")
+
+    # Sort the data if x values provided.
+    if x is not None:
+        x, y = sort_arrays(x, y)
+
+    # Include dummy values.
+    pad_low = y[0] * np.ones(window)
+    pad_high = y[-1] * np.ones(window)
+    y_pad = np.concatenate([pad_low, y, pad_high])
+
+    # Define the window indices.
+    a = int(np.ceil(window / 2))
+    b = window - a
+
+    # Loop through and calculate.
+    pcnt = [np.nanpercentile(y_pad[i-a:i+b], percentiles)
+            for i in range(window, len(y) + window)]
+    return np.squeeze(pcnt)
+
+
+def running_stdev(y, window=5, x=None):
+    """Calculate the running standard deviation within a window."""
+    return running_variance(y, window, x)**0.5
 
 
 def running_variance(y, window=5, x=None):
