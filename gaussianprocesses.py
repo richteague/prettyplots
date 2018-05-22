@@ -82,7 +82,7 @@ def SHO_model(x, y, dy, oversample=True, noise=True, return_var=False):
 def Matern32_model(x, y, dy, fit_mean=True, jitter=True, oversample=True,
                    return_var=True, verbose=False):
     """
-    Return a model using a Matern 3/2 kernel.
+    Return a model using a Matern 3/2 kernel. Most simple model possible.
 
     - Input -
 

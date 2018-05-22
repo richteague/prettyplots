@@ -268,6 +268,21 @@ def plotbeam(bmaj, bmin=None, bpa=0.0, ax=None, **kwargs):
     return
 
 
+def plotbeam_FWHM(beam, dx=0.9, dy=0.9, ax=None, **kwargs):
+    """Plot the beam FWHM for a linear plot. Must be same units!"""
+    if ax is None:
+        fig, ax = plt.subplots()
+    x, y = ax.transLimits.inverted().transform((dx, dy))
+    ax.errorbar(x, y, xerr=0.5*beam, capsize=2.0, capthick=1.25,
+                lw=kwargs.get('linewidth', kwargs.get('lw', 1.25)),
+                color=kwargs.get('color', kwargs.get('c', 'k')))
+    text = kwargs.get('text', False)
+    if text:
+        text = text if type(text) is not bool else '%.2f' % beam
+        ax.text(x - 0.8 * beam, y, text, ha='right', va='center', fontsize=7)
+    return
+
+
 def percentiles_to_errors(pcnts):
     """Covert [16, 50, 84]th percentiles to [y, -dy, +dy]."""
     pcnts = np.squeeze([pcnts])
