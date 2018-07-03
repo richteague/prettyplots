@@ -268,18 +268,30 @@ def plotbeam(bmaj, bmin=None, bpa=0.0, ax=None, **kwargs):
     return
 
 
-def plotbeam_FWHM(beam, dx=0.9, dy=0.9, ax=None, **kwargs):
-    """Plot the beam FWHM for a linear plot. Must be same units!"""
+def plotscale(scale, dx=0.9, dy=0.9, ax=None, text=None, text_above=True,
+              **kwargs):
+    """Plot a linear scale on the provided axes."""
+
+    # Generate axes if not provided.
     if ax is None:
         fig, ax = plt.subplots()
+
+    # Draw the scale bar.
     x, y = ax.transLimits.inverted().transform((dx, dy))
-    ax.errorbar(x, y, xerr=0.5*beam, capsize=2.0, capthick=1.25,
-                lw=kwargs.get('linewidth', kwargs.get('lw', 1.25)),
+    ax.errorbar(x, y, xerr=0.5*scale, capsize=1.5, capthick=1.0,
+                lw=kwargs.get('linewidth', kwargs.get('lw', 1.0)),
                 color=kwargs.get('color', kwargs.get('c', 'k')))
-    text = kwargs.get('text', False)
+
+    # Include the labelling.
     if text:
-        text = text if type(text) is not bool else '%.2f' % beam
-        ax.text(x - 0.8 * beam, y, text, ha='right', va='center', fontsize=7)
+        if text_above:
+            x, y = ax.transLimits.inverted().transform((dx, 1.2 * dy))
+        else:
+            x, y = ax.transLimits.inverted().transform((dx, 0.8 * dy))
+        text = text if type(text) is not bool else '%.2f' % scale
+        ax.text(x, y, text, ha='center', va='bottom' if text_above else 'top',
+                fontsize=kwargs.get('fontsize', kwargs.get('fs', 7.0)),
+                color=kwargs.get('color', kwargs.get('c', 'k')))
     return
 
 
@@ -293,3 +305,15 @@ def percentiles_to_errors(pcnts):
             raise TypeError("Must provide a Nx3 or 3xN array.")
         return np.array([[p[1], p[1]-p[0], p[2]-p[1]] for p in pcnts]).T
     return np.squeeze([pcnts[1], pcnts[1]-pcnts[0], pcnts[2]-pcnts[1]])
+
+
+def superscript(name):
+    """Return a LaTeX string with all numbers superscript."""
+    s = [r'{\rm %s}' % c if not c.isdigit() else r'^{%s}' % c for c in name]
+    return r'$%s$' % (''.join(s))
+
+
+def subscript(name):
+    """Return a LaTeX string with all the numbers subscript."""
+    s = [r'{\rm %s}' % c if not c.isdigit() else r'_{%s}' % c for c in name]
+    return r'$%s$' % (''.join(s))
