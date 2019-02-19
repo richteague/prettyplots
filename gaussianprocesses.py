@@ -38,7 +38,6 @@ def SHO_model(x, y, dy, oversample=True, noise=True, return_var=False):
     lnS0 = np.log(np.nanvar(y))
     lnw0 = np.log(np.nanmean(abs(np.diff(x))))
 
-    print lnQ, lnS0, lnw0
     kernel = celerite.terms.SHOTerm(log_S0=lnS0, log_Q=lnQ, log_omega0=lnw0)
 
     if noise:
@@ -67,13 +66,13 @@ def SHO_model(x, y, dy, oversample=True, noise=True, return_var=False):
         xx = x
 
     if soln.success:
-        print 'Solution:', soln.x
+        print('Solution:', soln.x)
         yy = gp.predict(y, xx, return_cov=False, return_var=return_var)
         if return_var:
             return xx, yy[0], yy[1]**0.5
         return xx, yy
     else:
-        print 'No Solution.'
+        print('No Solution.')
         if return_var:
             return x, y, np.zeros(x.size)
         return x, y
@@ -137,14 +136,14 @@ def Matern32_model(x, y, dy, fit_mean=True, jitter=True, oversample=True,
 
     if soln.success:
         if verbose:
-            print 'Solution:', soln.x
+            print('Solution:', soln.x)
         yy = gp.predict(y, xx, return_cov=False, return_var=return_var)
         if return_var:
             return xx, yy[0], yy[1]**0.5
         return xx, yy
     else:
         if verbose:
-            print 'No Solution.'
+            print('No Solution.')
         if return_var:
             return x, y, np.zeros(x.size)
         return x, y

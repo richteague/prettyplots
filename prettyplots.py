@@ -4,6 +4,12 @@ from matplotlib.patches import Ellipse
 from scipy.interpolate import griddata
 
 
+rainbows = ['#e61b23', '#f8a20e', '#00a650', '#1671c2', '#282b80', '#000000']
+mutedrwb = ['#1e1a31', '#6c2963', '#b54b76', '#e5697a', '#f98b74', '#ffb568',
+            '#ffe293', '#ffffff', '#b8f7f7', '#70d3e4', '#5eadcd', '#548abe',
+            '#4f63b1', '#4d4690', '#383353']
+
+
 def fill_NaN(data):
     """Fill in the NaN values with nearest values."""
     xgrid, ygrid = np.arange(data.shape[1]), np.arange(data.shape[0])
@@ -295,6 +301,20 @@ def plotscale(scale, dx=0.9, dy=0.9, ax=None, text=None, text_above=True,
     return
 
 
+def clip_array(arr, min=None, max=None, NaN=True):
+    """Return a clipped array."""
+    if NaN:
+        arr = fill_NaN(arr)
+    NaN_mask = np.isnan(arr)
+    if min is not None:
+        arr = np.where(arr >= min, arr, min)
+        arr = np.where(NaN_mask, np.nan, arr)
+    if max is not None:
+        arr = np.where(arr <= max, arr, max)
+        arr = np.where(NaN_mask, np.nan, arr)
+    return arr
+
+
 def percentiles_to_errors(pcnts):
     """Covert [16, 50, 84]th percentiles to [y, -dy, +dy]."""
     pcnts = np.squeeze([pcnts])
@@ -305,6 +325,75 @@ def percentiles_to_errors(pcnts):
             raise TypeError("Must provide a Nx3 or 3xN array.")
         return np.array([[p[1], p[1]-p[0], p[2]-p[1]] for p in pcnts]).T
     return np.squeeze([pcnts[1], pcnts[1]-pcnts[0], pcnts[2]-pcnts[1]])
+
+
+def step_PDF(x, x0, dx):
+    """
+    Step PDF function. Helps avoid the discontinuity in Gaussian PDFs.
+
+    Args:
+        x (ndarray[float]): Arrays of points to sample the PDF on.
+        x0 (float): Median value of the PDF.
+        dx (ndarray[float]): One-sigma limits calculated from the
+            16th and 84th percentiles.
+
+    Returns:
+        PDF (ndarray[float]): Simple step function PDF from percentiles.
+    """
+    mask = np.logical_or(np.logical_and(x >= x0-3*dx[0], x <= x0-2*dx[0]),
+                         np.logical_and(x >= x0+2*dx[1], x <= x0+3*dx[1]))
+    PDF = np.where(mask, 2.1, 0.0)
+    mask = np.logical_or(np.logical_and(x >= x0-2*dx[0], x <= x0-dx[0]),
+                         np.logical_and(x >= x0+dx[1], x <= x0+2*dx[1]))
+    PDF = np.where(mask, 13.6, PDF)
+    mask = np.logical_and(x >= x0-dx[0], x <= x0+dx[1])
+    PDF = np.where(mask, 64.0, PDF)
+    return PDF / np.trapz(PDF, x)
+
+
+def combine_samples(y, dy):
+    """
+    Combine samples each with their own PDF distribution and
+    the intrinsic scatter in their median values.
+
+    Args:
+        y (ndarray[float]): Medians of all the samples.
+        dy (ndarray[float]): Array of the 1 sigma uncertainties
+            for the samples based on their 16th to 84th percentiles.
+            Must be either one for each y value, or two, with the
+            first being the 16th to 50th percentile range and the
+            latter being hte 50th to 84th. If only a single value
+            is given we assume symmetric values.
+
+    Returns:
+        percentiles (ndarray[float]): The median and 1 sigma
+            uncertainties based on the 16th to 84th percentile of
+            the combined PDF.
+    """
+
+    # Check the shapes of the input arrays.
+    dy = np.atleast_2d(dy)
+    if dy.shape[1] != y.shape[0]:
+        if dy.shape[0] == y.shape[0]:
+            dy = dy.T
+        else:
+            raise ValueError("Wrong uncertainty shape.")
+    if dy.shape[0] == 1:
+        dy = np.vstack([dy, dy])
+    elif dy.shape[0] > 2:
+        raise ValueError("Too many uncertainties per sample.")
+    dy = abs(dy).T
+
+    # Make the x-axis.
+    x = 1.2 * (abs(y).max() + abs(dy).max())
+    x = np.linspace(-x, x, 1000) + np.nanmean(y)
+
+    # Fill with all the PDFs and calculate percentiles.
+    yc = [step_PDF(x, x0, dx) for x0, dx in zip(y, dy)]
+    yc = np.cumsum(np.sum(yc, axis=0))
+    yc /= yc[-1]
+    p = [x[abs(yc - p).argmin()] for p in [0.16, 0.5, 0.84]]
+    return np.array([p[1], p[1] - p[0], p[2] - p[1]])
 
 
 def superscript(name):
